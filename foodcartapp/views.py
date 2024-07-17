@@ -4,11 +4,14 @@ import json
 
 from foodcartapp.models import Product
 from foodcartapp.models import Order, OrderDetail
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
 
 
+@api_view(['GET'])
 def banners_list_api(request):
     # FIXME move data to db?
-    return JsonResponse([
+    return Response([
         {
             'title': 'Burger',
             'src': static('burger.jpg'),
@@ -24,12 +27,10 @@ def banners_list_api(request):
             'src': static('tasty.jpg'),
             'text': 'Food is incomplete without a tasty dessert',
         }
-    ], safe=False, json_dumps_params={
-        'ensure_ascii': False,
-        'indent': 4,
-    })
+    ])
 
 
+@api_view(['GET'])
 def product_list_api(request):
     products = Product.objects.select_related('category').available()
 
@@ -52,17 +53,14 @@ def product_list_api(request):
             }
         }
         dumped_products.append(dumped_product)
-    return JsonResponse(dumped_products, safe=False, json_dumps_params={
-        'ensure_ascii': False,
-        'indent': 4,
-    })
+    return Response(dumped_products)
 
 
+@api_view(['POST'])
 def register_order(request):
     try:
-        data = json.loads(request.body.decode())
-        # products = Product.objects.all()
-        # [product.orders.id for order in Order.objects.all()]
+        data = request.body.decode()
+
         order = Order.objects.create(firstname=data['firstname'],
                              lastname=data['lastname'],
                              phone_number=data['phonenumber'],
@@ -75,8 +73,6 @@ def register_order(request):
 
         print(data)
     except ValueError:
-        return JsonResponse({
-            'error': 'bla bla bla',
-        })
+        return Response({})
     # TODO это лишь заглушка
-    return JsonResponse({})
+    return Response({})
