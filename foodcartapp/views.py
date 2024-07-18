@@ -5,6 +5,7 @@ import json
 from foodcartapp.models import Product
 from foodcartapp.models import Order, OrderDetail
 from rest_framework.decorators import api_view
+from rest_framework import status
 from rest_framework.response import Response
 
 
@@ -56,23 +57,37 @@ def product_list_api(request):
     return Response(dumped_products)
 
 
+# def register_order(request):
+#     data = json.loads(request.body.decode())
+#     print(data)
+
 @api_view(['POST'])
 def register_order(request):
     try:
-        data = request.body.decode()
+        request_order = request.data
 
-        order = Order.objects.create(firstname=data['firstname'],
-                             lastname=data['lastname'],
-                             phone_number=data['phonenumber'],
-                             address=data['address'])
+        if not isinstance(request_order['products'], list):
+            return Response('products: Ожидался list со значениями, но был получен "str" или пустой')
+        if request_order['products'] is None:
+            return Response('products: Это поле не может быть пустым.')
+        if not request_order['products']:
+            return Response('products: Этот список не может быть пустым.')
 
-        for product in data.get('products'):
+
+        order = Order.objects.create(firstname=request_order['firstname'],
+                             lastname=request_order['lastname'],
+                             phone_number=request_order['phonenumber'],
+                             address=request_order['address'])
+
+        for product in request_order.get('products'):
             OrderDetail.objects.create(product=Product.objects.get(id=product.get('product')),
                                        quantity=product.get('quantity'),
                                        order=order)
 
-        print(data)
+        # print(data)
     except ValueError:
         return Response({})
-    # TODO это лишь заглушка
+    except KeyError as e:
+        return Response(f'{e}: Этот список не может быть пустым.')
+
     return Response({})
