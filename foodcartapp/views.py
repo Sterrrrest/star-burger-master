@@ -2,13 +2,21 @@ from django.http import JsonResponse
 from django.templatetags.static import static
 import json
 import re
+import requests
 
 from foodcartapp.models import Product
 from foodcartapp.models import Order, OrderDetail
+
 from rest_framework.decorators import api_view
 from rest_framework import status
 from rest_framework.response import Response
+from rest_framework.serializers import ValidationError
+from rest_framework.serializers import Serializer
+from rest_framework.serializers import CharField, ListField, IntegerField, DictField, ModelSerializer
+
 from errors import get_null, get_space
+
+
 
 
 @api_view(['GET'])
@@ -59,54 +67,57 @@ def product_list_api(request):
     return Response(dumped_products)
 
 
-# def register_order(request):
-#     data = json.loads(request.body.decode())
-#     print(data)
+
+class OrderDetailSerializer(ModelSerializer):
+    class Meta:
+        model = OrderDetail
+        fields = ['product', 'quantity']
+
+
+class OrderSerializer(ModelSerializer):
+    products = ListField(child=OrderDetailSerializer(), allow_empty=False)
+
+    def validate_phonenumber(self, value):
+        phone_format = re.compile('^\+?[78][1-9][-\(]?\d{2}\)?-?\d{3}-?\d{2}-?\d{2}$')
+
+        if not phone_format.search(value):
+            raise ValidationError('Hеверный формат номера телефона')
+        return value
+
+    class Meta:
+        model = Order
+        fields = ['products', 'phonenumber', 'firstname', 'lastname', 'address']
 
 @api_view(['POST'])
 def register_order(request):
     try:
-        request_order = request.data
+        serializer = OrderSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        last_product = Product.objects.all().last().id
-        if request_order['products'][0]['product'] > last_product:
-            return Response(f"Недопустимый первичный ключ {request_order['products'][0]['product']}")
+        products = request.data.get('products')
+        if not isinstance(products, list):
+            raise ValidationError('Expects products field be a list')
 
-        phone_format = re.compile('^\+?[78][1-9][-\(]?\d{2}\)?-?\d{3}-?\d{2}-?\d{2}$')
+        for fields in products:
+            serializer = OrderDetailSerializer(data=fields)
+            serializer.is_valid(raise_exception=True)
 
-        if not phone_format.search(request_order['phonenumber']):
-            return Response('неверный формат номера телефона')
+        order = Order.objects.create(firstname=serializer.validated_data['firstname'],
+                                     lastname=serializer.validated_data['lastname'],
+                                     phonenumber=serializer.validated_data['phonenumber'],
+                                     address=serializer.validated_data['address'])
 
-        if not isinstance(request_order['products'], list):
-            return Response('products: Ожидался list со значениями, но был получен "str" или пустой')
-
-        for field in request_order:
-            if not isinstance(request_order.get(field), str) and request_order.get(field) is not request_order['products']:
-                return Response(f'{field}: Ожидался str со значениями, но был получен list')
-            elif not request_order.get(field):
-                return get_space(request_order)
-            elif request_order.get(field) is None:
-                return get_null(request_order)
-
-
-        order = Order.objects.create(firstname=request_order['firstname'],
-                             lastname=request_order['lastname'],
-                             phone_number=request_order['phonenumber'],
-                             address=request_order['address'])
-
-        for product in request_order.get('products'):
+        for product in serializer.validated_data.get('products'):
             OrderDetail.objects.create(product=Product.objects.get(id=product.get('product')),
                                        quantity=product.get('quantity'),
                                        order=order)
 
-        # print(data)
     except ValueError:
         return Response({})
 
-    except KeyError as e:
-        return Response(f'{e}: Обязательное поле')
-
-    # except Exception:
-    #     return get_null(request_order)
+    except requests.exceptions.HTTPError:
+        print('HTTPError')
+    except requests.exceptions.ConnectionError:
+        print('ConnectionError')
 
     return Response({})

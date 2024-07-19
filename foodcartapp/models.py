@@ -97,7 +97,7 @@ class Product(models.Model):
 class Order(models.Model):
     firstname = models.CharField(verbose_name="Имя заказчика", max_length=200, db_index=True)
     lastname = models.CharField(verbose_name="Фамилия заказчика", max_length=200, db_index=True)
-    phone_number = PhoneNumberField(region='RU', verbose_name="Номер телефон")
+    phonenumber = PhoneNumberField(region='RU', verbose_name="Номер телефон")
     address = models.TextField(verbose_name="Адрес", max_length=200, db_index=True, blank=True)
     # order = models.ForeignKey(Order, verbose_name='Продукт', on_delete=models.CASCADE, related_name='clients')
 
