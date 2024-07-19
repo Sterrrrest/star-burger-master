@@ -1,12 +1,14 @@
 from django.http import JsonResponse
 from django.templatetags.static import static
 import json
+import re
 
 from foodcartapp.models import Product
 from foodcartapp.models import Order, OrderDetail
 from rest_framework.decorators import api_view
 from rest_framework import status
 from rest_framework.response import Response
+from errors import get_null, get_space
 
 
 @api_view(['GET'])
@@ -66,12 +68,25 @@ def register_order(request):
     try:
         request_order = request.data
 
+        last_product = Product.objects.all().last().id
+        if request_order['products'][0]['product'] > last_product:
+            return Response(f"Недопустимый первичный ключ {request_order['products'][0]['product']}")
+
+        phone_format = re.compile('^\+?[78][1-9][-\(]?\d{2}\)?-?\d{3}-?\d{2}-?\d{2}$')
+
+        if not phone_format.search(request_order['phonenumber']):
+            return Response('неверный формат номера телефона')
+
         if not isinstance(request_order['products'], list):
             return Response('products: Ожидался list со значениями, но был получен "str" или пустой')
-        if request_order['products'] is None:
-            return Response('products: Это поле не может быть пустым.')
-        if not request_order['products']:
-            return Response('products: Этот список не может быть пустым.')
+
+        for field in request_order:
+            if not isinstance(request_order.get(field), str) and request_order.get(field) is not request_order['products']:
+                return Response(f'{field}: Ожидался str со значениями, но был получен list')
+            elif not request_order.get(field):
+                return get_space(request_order)
+            elif request_order.get(field) is None:
+                return get_null(request_order)
 
 
         order = Order.objects.create(firstname=request_order['firstname'],
@@ -87,7 +102,11 @@ def register_order(request):
         # print(data)
     except ValueError:
         return Response({})
+
     except KeyError as e:
-        return Response(f'{e}: Этот список не может быть пустым.')
+        return Response(f'{e}: Обязательное поле')
+
+    # except Exception:
+    #     return get_null(request_order)
 
     return Response({})
