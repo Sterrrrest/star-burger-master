@@ -1,20 +1,19 @@
-from django.http import JsonResponse
-from django.templatetags.static import static
 import json
 import re
 import requests
 
-from foodcartapp.models import Product
-from foodcartapp.models import Order, OrderDetail
+from django.http import JsonResponse
+from django.templatetags.static import static
+
+from foodcartapp.models import Order, OrderDetail, Product
 
 from rest_framework.decorators import api_view
-from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 from rest_framework.serializers import Serializer
 from rest_framework.serializers import CharField, ListField, IntegerField, DictField, ModelSerializer
-
-from errors import get_null, get_space
+from rest_framework.renderers import JSONRenderer
+from rest_framework.parsers import JSONParser
 
 
 
@@ -67,7 +66,6 @@ def product_list_api(request):
     return Response(dumped_products)
 
 
-
 class OrderDetailSerializer(ModelSerializer):
     class Meta:
         model = OrderDetail
@@ -75,7 +73,7 @@ class OrderDetailSerializer(ModelSerializer):
 
 
 class OrderSerializer(ModelSerializer):
-    products = ListField(child=OrderDetailSerializer(), allow_empty=False)
+    products = OrderDetailSerializer(many=True, allow_empty=False, write_only=True)
 
     def validate_phonenumber(self, value):
         phone_format = re.compile('^\+?[78][1-9][-\(]?\d{2}\)?-?\d{3}-?\d{2}-?\d{2}$')
@@ -86,30 +84,23 @@ class OrderSerializer(ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ['products', 'phonenumber', 'firstname', 'lastname', 'address']
+        fields = ['id', 'phonenumber', 'firstname', 'lastname', 'address', 'products']
 
 @api_view(['POST'])
 def register_order(request):
     try:
-        serializer = OrderSerializer(data=request.data)
+        request_data = request.data
+        serializer = OrderSerializer(data=request_data)
         serializer.is_valid(raise_exception=True)
-
-        products = request.data.get('products')
-        if not isinstance(products, list):
-            raise ValidationError('Expects products field be a list')
-
-        for fields in products:
-            serializer = OrderDetailSerializer(data=fields)
-            serializer.is_valid(raise_exception=True)
 
         order = Order.objects.create(firstname=serializer.validated_data['firstname'],
                                      lastname=serializer.validated_data['lastname'],
                                      phonenumber=serializer.validated_data['phonenumber'],
                                      address=serializer.validated_data['address'])
 
-        for product in serializer.validated_data.get('products'):
-            OrderDetail.objects.create(product=Product.objects.get(id=product.get('product')),
-                                       quantity=product.get('quantity'),
+        for product in serializer.validated_data['products']:
+            products = OrderDetail.objects.create(product=Product.objects.get(id=product['product'].id),
+                                       quantity=product['quantity'],
                                        order=order)
 
     except ValueError:
@@ -120,4 +111,4 @@ def register_order(request):
     except requests.exceptions.ConnectionError:
         print('ConnectionError')
 
-    return Response({})
+    return Response(OrderSerializer(order).data)
