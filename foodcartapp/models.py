@@ -8,6 +8,7 @@ from django.db.models import Count, Sum
 
 
 class OrderQuerySet(models.QuerySet):
+
     def price(self):
 
         sum = self.annotate(sum=Sum(F('order_details__quantity') * F('order_details__product__price'))).order_by('id')
@@ -112,12 +113,10 @@ class Order(models.Model):
     address = models.TextField(verbose_name="Адрес", max_length=200, db_index=True, blank=True)
 
     objects = OrderQuerySet.as_manager()
-    # @property
-    # def full_price(self):
-    #
-    #     sum = self.order_details.annotate(sum=Sum(F('quantity') * F('product.price')))
-    #     # sum = self.product.price * self.quantity
-    #     return sum
+
+    class Meta:
+        verbose_name = 'заказ'
+        verbose_name_plural = 'заказы'
 
     def __str__(self):
         return f"{self.firstname} {self.lastname}"
@@ -127,12 +126,14 @@ class OrderDetail(models.Model):
     product = models.ForeignKey(Product, verbose_name='Продукт', on_delete=models.CASCADE, related_name='products')
     quantity = models.IntegerField(verbose_name='Количество')
     order = models.ForeignKey(Order, verbose_name='Клиент', on_delete=models.CASCADE, related_name='order_details')
-
+    amount = models.DecimalField(verbose_name="Стоимость", max_digits=8, decimal_places=2,
+                                 validators=[MinValueValidator(0)], default=0.00)
     class Meta:
         verbose_name = 'Детали заказа'
 
     def __str__(self):
         return f'{self.product.name} {self.order.firstname} {self.order.lastname}'
+
 
 class RestaurantMenuItem(models.Model):
     restaurant = models.ForeignKey(
