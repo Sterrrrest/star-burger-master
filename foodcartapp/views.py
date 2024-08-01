@@ -4,6 +4,7 @@ import requests
 
 from django.http import JsonResponse
 from django.templatetags.static import static
+from django.db import transaction
 
 from foodcartapp.models import Order, OrderDetail, Product
 
@@ -20,7 +21,6 @@ from rest_framework.parsers import JSONParser
 
 @api_view(['GET'])
 def banners_list_api(request):
-    # FIXME move data to db?
     return Response([
         {
             'title': 'Burger',
@@ -86,9 +86,12 @@ class OrderSerializer(ModelSerializer):
         model = Order
         fields = ['id', 'phonenumber', 'firstname', 'lastname', 'address', 'products']
 
+
+@transaction.atomic
 @api_view(['POST'])
 def register_order(request):
     try:
+
         request_data = request.data
         serializer = OrderSerializer(data=request_data)
         serializer.is_valid(raise_exception=True)
