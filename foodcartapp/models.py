@@ -124,7 +124,14 @@ class Order(models.Model):
         DEL = '3', 'Доставляется'
         FIN = '4', 'Доставлен'
 
+    class Payment(models.TextChoices):
+        CAS = '1', 'Наличные'
+        ONL = '2', 'Онлайн'
+        CAR = '3', 'Картой'
+
     status = models.CharField(max_length=2, choices=Status.choices, default=Status.ACC, db_index=True)
+    payment = models.CharField(max_length=2, choices=Payment.choices, default=Payment.CAS, db_index=True)
+
     comment = models.TextField(verbose_name='Комментарий', max_length=400, blank=True)
 
     objects = OrderQuerySet.as_manager()
