@@ -1,10 +1,12 @@
 from django.db import models
+from django.db.models import F
+from django.db.models import Count, Sum
+
 from django.core.validators import MinValueValidator
 from phonenumber_field.modelfields import PhoneNumberField
 from django.core.files.base import ContentFile
-from django.db.models import F
+from django.utils import timezone
 
-from django.db.models import Count, Sum
 
 
 class OrderQuerySet(models.QuerySet):
@@ -112,6 +114,9 @@ class Order(models.Model):
     lastname = models.CharField(verbose_name="Фамилия заказчика", max_length=200, db_index=True)
     phonenumber = PhoneNumberField(region='RU', verbose_name="Номер телефон")
     address = models.TextField(verbose_name="Адрес", max_length=200, db_index=True, blank=True)
+    registered_at = models.DateTimeField(verbose_name='Время создания заказа', default=timezone.now, db_index=True)
+    called_at = models.DateTimeField(verbose_name='Время звонка', null=True, db_index=True)
+    delivered_at = models.DateTimeField(verbose_name='Время доставки', null=True, db_index=True)
 
     class Status(models.TextChoices):
         ACC = '1', 'Принят'
