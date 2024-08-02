@@ -1,7 +1,12 @@
+from urllib.parse import urlencode
 from django.contrib import admin
 from django.shortcuts import reverse
 from django.templatetags.static import static
 from django.utils.html import format_html
+from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils.encoding import iri_to_uri
+from django.shortcuts import redirect
+from django.http import HttpResponseRedirect
 
 from .models import Product
 from .models import ProductCategory
@@ -113,14 +118,19 @@ class ProductAdmin(admin.ModelAdmin):
 
 
 @admin.register(Order)
-class ClientAdmin(admin.ModelAdmin):
-    list_display = ['firstname', ]
+class OrderAdmin(admin.ModelAdmin):
+    list_display = ['firstname', 'status']
+    search_fields = ['firstname', 'status']
+    list_filter = ['status']
     inlines = [
         OrderDetailInline
     ]
 
-
-    # inlines = [
-    #     ProductInline,
-    # ]
-    # extra = 1
+    def response_change(self, request, obj):
+        res = super(OrderAdmin, self).response_change(request, obj)
+        if 'next' in request.GET:
+            if url_has_allowed_host_and_scheme(request.GET['next'], ['127.0.0.1', 'localhost']):
+                url = iri_to_uri(request.GET['next'])
+                return redirect(url)
+        else:
+            return res

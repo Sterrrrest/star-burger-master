@@ -106,11 +106,20 @@ class Product(models.Model):
     def __str__(self):
         return self.name
 
+
 class Order(models.Model):
     firstname = models.CharField(verbose_name="Имя заказчика", max_length=200, db_index=True)
     lastname = models.CharField(verbose_name="Фамилия заказчика", max_length=200, db_index=True)
     phonenumber = PhoneNumberField(region='RU', verbose_name="Номер телефон")
     address = models.TextField(verbose_name="Адрес", max_length=200, db_index=True, blank=True)
+
+    class Status(models.TextChoices):
+        ACC = '1', 'Принят'
+        PRE = '2', 'Готовиться'
+        DEL = '3', 'Доставляется'
+        FIN = '4', 'Доставлен'
+
+    status = models.CharField(max_length=2, choices=Status.choices, default=Status.ACC, db_index=True)
 
     objects = OrderQuerySet.as_manager()
 
