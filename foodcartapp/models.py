@@ -114,9 +114,10 @@ class Order(models.Model):
     lastname = models.CharField(verbose_name="Фамилия заказчика", max_length=200, db_index=True)
     phonenumber = PhoneNumberField(region='RU', verbose_name="Номер телефон")
     address = models.TextField(verbose_name="Адрес", max_length=200, db_index=True, blank=True)
+    restaurant = models.ForeignKey('Restaurant', related_name='orders', on_delete=models.CASCADE, null=True)
     registered_at = models.DateTimeField(verbose_name='Время создания заказа', default=timezone.now, db_index=True)
-    called_at = models.DateTimeField(verbose_name='Время звонка', null=True, db_index=True)
-    delivered_at = models.DateTimeField(verbose_name='Время доставки', null=True, db_index=True)
+    called_at = models.DateTimeField(verbose_name='Время звонка', null=True, db_index=True, blank=True)
+    delivered_at = models.DateTimeField(verbose_name='Время доставки', null=True, db_index=True, blank=True)
 
     class Status(models.TextChoices):
         ACC = '1', 'Принят'
