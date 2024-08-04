@@ -5,6 +5,7 @@
 {% block content %}
   <center>
     <h2>Необработанные заказы</h2>
+    {{available_restaurants}} вот
   </center>
   <hr/>
   <br/>
@@ -33,6 +34,7 @@
         <td>{{item.order.firstname}} {{item.order.lastname}}</td>
         <td>{{item.order.phonenumber}}</td>
         <td>{{item.order.address}}</td>
+        <td>{{item.order.comment}}</td>
         <td>
           {% if item.restaurants%}
               {% if item.order.status == '1'%}
@@ -41,7 +43,7 @@
                       Может быть приготовлен ресторанами
                     </summary>
                     {% for i in item.restaurants %}
-                    <li>{{i}}</li>
+                    <li>{{i.restaurant}} - {{i.interval}}</li>
                      {% endfor %}
                   </details>
                 {% elif item.order.status == '2' %}
@@ -51,7 +53,6 @@
             {% endif %}
           {% endif %}
          </td>
-        <td>{{item.order.comment}}</td>
         <td><a href = "{% url 'admin:foodcartapp_order_change' object_id=item.order.id %}?next={{ request.path|urlencode }}"> Редактировать</a></td>
       </tr>
      {% endfor %}

@@ -1,3 +1,7 @@
+import requests
+
+from environs import Env
+
 from django import forms
 from django.shortcuts import redirect, render
 from django.views import View
@@ -9,8 +13,34 @@ from django.db.models import F
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
 
+from geopy import distance
+
 from foodcartapp.models import Order, OrderDetail
 from foodcartapp.models import Product, Restaurant, RestaurantMenuItem
+
+
+env = Env()
+env.read_env()
+
+apikey = env.str('YANDEX_API_KEY')
+
+
+def fetch_coordinates(apikey, address):
+    base_url = "https://geocode-maps.yandex.ru/1.x"
+    response = requests.get(base_url, params={
+        "geocode": address,
+        "apikey": apikey,
+        "format": "json",
+    })
+    response.raise_for_status()
+    found_places = response.json()['response']['GeoObjectCollection']['featureMember']
+
+    if not found_places:
+        return None
+
+    most_relevant = found_places[0]
+    lon, lat = most_relevant['GeoObject']['Point']['pos'].split(" ")
+    return lon, lat
 
 
 class Login(forms.Form):
@@ -94,23 +124,56 @@ def view_restaurants(request):
 
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_orders(request):
-    orders = Order.objects.price().exclude(status=4).prefetch_related('order_details').order_by('status')
-    available_restaurant = {}
-    available_restaurants = []
+    try:
+        orders = Order.objects.price().exclude(status=4).prefetch_related('order_details').order_by('status')
+        available_restaurants = []
+        # restaurants = Restaurant.objects.all()
+        # rest_address = [fetch_coordinates(apikey, restaurant.address) for restaurant in restaurants]
 
-    for order in orders:
-        restaurants = []
-        if order.order_details.all():
-            restaurant_first_product = RestaurantMenuItem.objects.filter(
-                product_id=order.order_details.first().product.id
-            )
-            for product_in_rest in restaurant_first_product:
+        for order in orders:
+
+            first_product_restaurants = []
+            product_restaurants = []
+
+            restaurant_first_product = RestaurantMenuItem.objects.filter(product_id=order.order_details.first().product.id)
+            for rest in restaurant_first_product:
+                first_product_restaurants.append(rest.restaurant)
+
+            for r in first_product_restaurants:
+                t = []
+                products_in_rest = RestaurantMenuItem.objects.filter(restaurant=r)
                 for product_in_od in order.order_details.all():
-                    if product_in_od.product == product_in_rest.product:
-                        restaurants.append(product_in_rest.restaurant.name)
+                    if products_in_rest.filter(product=product_in_od.product).exists():
+                        if r not in t:
+                            t.append(r)
                     else:
-                        restaurants.clear()
-            available_restaurant = {'order': order, 'restaurants': restaurants}
-        available_restaurants.append(available_restaurant)
+                        t.clear()
+                        break
+                if t:
+                    product_restaurants.append(t[0])
+            order_coords = fetch_coordinates(apikey, order.address)
+            restar =[]
+            for ar in product_restaurants:
+
+                rest_coords = fetch_coordinates(apikey, ar.address)
+                restaurants = {'restaurant': ar,
+                               'interval': distance.distance(rest_coords, order_coords).km
+                               }
+                restar.append(restaurants)
+            # sorted(restaurants.items(), key=lambda item:[1])
+            # sorted(inter)
+
+            available_restaurant = {'order': order, 'restaurants': sorted(restar, key=lambda d:d['interval'])}
+            available_restaurants.append(available_restaurant)
+
+    except requests.RequestException:
+        print('requests.RequestException')
+    except requests.ConnectionError:
+        print('requests.ConnectionError')
+
+
+
+
+
 
     return render(request, template_name='order_items.html', context={'available_restaurants': available_restaurants})
