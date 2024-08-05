@@ -17,8 +17,6 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.parsers import JSONParser
 
 
-
-
 @api_view(['GET'])
 def banners_list_api(request):
     return Response([

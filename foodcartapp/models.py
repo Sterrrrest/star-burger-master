@@ -8,9 +8,7 @@ from django.core.files.base import ContentFile
 from django.utils import timezone
 
 
-
 class OrderQuerySet(models.QuerySet):
-
     def price(self):
 
         sum = self.annotate(sum=Sum(F('order_details__quantity') * F('order_details__product__price'))).order_by('id')

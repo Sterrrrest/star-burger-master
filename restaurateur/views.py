@@ -1,7 +1,5 @@
 import requests
 
-from environs import Env
-
 from django import forms
 from django.shortcuts import redirect, render
 from django.views import View
@@ -17,30 +15,9 @@ from geopy import distance
 
 from foodcartapp.models import Order, OrderDetail
 from foodcartapp.models import Product, Restaurant, RestaurantMenuItem
+from interval.models import GeoPlace
 
-
-env = Env()
-env.read_env()
-
-apikey = env.str('YANDEX_API_KEY')
-
-
-def fetch_coordinates(apikey, address):
-    base_url = "https://geocode-maps.yandex.ru/1.x"
-    response = requests.get(base_url, params={
-        "geocode": address,
-        "apikey": apikey,
-        "format": "json",
-    })
-    response.raise_for_status()
-    found_places = response.json()['response']['GeoObjectCollection']['featureMember']
-
-    if not found_places:
-        return None
-
-    most_relevant = found_places[0]
-    lon, lat = most_relevant['GeoObject']['Point']['pos'].split(" ")
-    return lon, lat
+from interval.views import fetch_coordinates
 
 
 class Login(forms.Form):
@@ -127,8 +104,6 @@ def view_orders(request):
     try:
         orders = Order.objects.price().exclude(status=4).prefetch_related('order_details').order_by('status')
         available_restaurants = []
-        # restaurants = Restaurant.objects.all()
-        # rest_address = [fetch_coordinates(apikey, restaurant.address) for restaurant in restaurants]
 
         for order in orders:
 
@@ -151,29 +126,22 @@ def view_orders(request):
                         break
                 if t:
                     product_restaurants.append(t[0])
-            order_coords = fetch_coordinates(apikey, order.address)
+            order_coords = fetch_coordinates(order.address)
             restar =[]
             for ar in product_restaurants:
 
-                rest_coords = fetch_coordinates(apikey, ar.address)
+                rest_coords = fetch_coordinates(ar.address)
                 restaurants = {'restaurant': ar,
                                'interval': distance.distance(rest_coords, order_coords).km
                                }
                 restar.append(restaurants)
-            # sorted(restaurants.items(), key=lambda item:[1])
-            # sorted(inter)
 
-            available_restaurant = {'order': order, 'restaurants': sorted(restar, key=lambda d:d['interval'])}
+            available_restaurant = {'order': order, 'restaurants': sorted(restar, key=lambda d: d['interval'])}
             available_restaurants.append(available_restaurant)
 
     except requests.RequestException:
         print('requests.RequestException')
     except requests.ConnectionError:
         print('requests.ConnectionError')
-
-
-
-
-
 
     return render(request, template_name='order_items.html', context={'available_restaurants': available_restaurants})
