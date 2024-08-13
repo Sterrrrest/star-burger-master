@@ -139,9 +139,9 @@ def view_orders(request):
             available_restaurant = {'order': order, 'restaurants': sorted(restar, key=lambda d: d['interval'])}
             available_restaurants.append(available_restaurant)
 
-    except requests.RequestException:
-        print('requests.RequestException')
-    except requests.ConnectionError:
-        print('requests.ConnectionError')
+    except requests.RequestException as e:
+        print('Ошибка запроса', e)
+    except requests.ConnectionError as e:
+        print('Ошибка подключения', e)
 
     return render(request, template_name='order_items.html', context={'available_restaurants': available_restaurants})
