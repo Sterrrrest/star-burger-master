@@ -7,12 +7,10 @@ from django.templatetags.static import static
 from django.db import transaction
 
 from foodcartapp.models import Order, OrderDetail, Product
+from foodcartapp.serializers import OrderSerializer, OrderDetailSerializer
 
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from rest_framework.serializers import ValidationError
-from rest_framework.serializers import Serializer
-from rest_framework.serializers import CharField, ListField, IntegerField, DictField, ModelSerializer
 from rest_framework.renderers import JSONRenderer
 from rest_framework.parsers import JSONParser
 
@@ -64,32 +62,10 @@ def product_list_api(request):
     return Response(dumped_products)
 
 
-class OrderDetailSerializer(ModelSerializer):
-    class Meta:
-        model = OrderDetail
-        fields = ['product', 'quantity']
-
-
-class OrderSerializer(ModelSerializer):
-    products = OrderDetailSerializer(many=True, allow_empty=False, write_only=True)
-
-    def validate_phonenumber(self, value):
-        phone_format = re.compile('^\+?[78][1-9][-\(]?\d{2}\)?-?\d{3}-?\d{2}-?\d{2}$')
-
-        if not phone_format.search(value):
-            raise ValidationError('Hеверный формат номера телефона')
-        return value
-
-    class Meta:
-        model = Order
-        fields = ['id', 'phonenumber', 'firstname', 'lastname', 'address', 'products']
-
-
 @transaction.atomic
 @api_view(['POST'])
 def register_order(request):
     try:
-
         request_data = request.data
         serializer = OrderSerializer(data=request_data)
         serializer.is_valid(raise_exception=True)
@@ -100,7 +76,7 @@ def register_order(request):
                                      address=serializer.validated_data['address'])
 
         for product in serializer.validated_data['products']:
-            products = OrderDetail.objects.create(product=Product.objects.get(id=product['product'].id),
+            OrderDetail.objects.create(product=Product.objects.get(id=product['product'].id),
                                        quantity=product['quantity'],
                                        order=order)
 
