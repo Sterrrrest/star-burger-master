@@ -69,23 +69,15 @@ def register_order(request):
         request_data = request.data
         serializer = OrderSerializer(data=request_data)
         serializer.is_valid(raise_exception=True)
-
-        order = Order.objects.create(firstname=serializer.validated_data['firstname'],
-                                     lastname=serializer.validated_data['lastname'],
-                                     phonenumber=serializer.validated_data['phonenumber'],
-                                     address=serializer.validated_data['address'])
-
-        for product in serializer.validated_data['products']:
-            OrderDetail.objects.create(product=Product.objects.get(id=product['product'].id),
-                                       quantity=product['quantity'],
-                                       order=order)
+        serializer.save()
 
     except ValueError:
         return Response({})
 
-    except requests.exceptions.HTTPError:
-        print('HTTPError')
-    except requests.exceptions.ConnectionError:
-        print('ConnectionError')
+    except requests.RequestException as e:
+        print('Ошибка запроса', e)
 
-    return Response(OrderSerializer(order).data)
+    except requests.ConnectionError as e:
+        print('Ошибка подключения', e)
+
+    return Response(serializer.data)

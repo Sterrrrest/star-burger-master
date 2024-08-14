@@ -145,10 +145,11 @@ class Order(models.Model):
 
 class OrderDetail(models.Model):
     product = models.ForeignKey(Product, verbose_name='Продукт', on_delete=models.CASCADE, related_name='products')
-    quantity = models.IntegerField(verbose_name='Количество', max_value=50)
+    quantity = models.IntegerField(verbose_name='Количество', max_length=2)
     order = models.ForeignKey(Order, verbose_name='Клиент', on_delete=models.CASCADE, related_name='order_details')
     amount = models.DecimalField(verbose_name="Стоимость", max_digits=8, decimal_places=2,
-                                 validators=[MinValueValidator(0)])
+                                 validators=[MinValueValidator(0)], null=True)
+
     class Meta:
         verbose_name = 'Детали заказа'
 
