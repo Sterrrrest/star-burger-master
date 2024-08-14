@@ -106,7 +106,7 @@ def view_orders(request):
         available_restaurants = []
 
         for order in orders:
-
+            order_coords = fetch_coordinates(order.address)
             first_product_restaurants = []
             product_restaurants = []
 
@@ -125,18 +125,14 @@ def view_orders(request):
                         t.clear()
                         break
                 if t:
-                    product_restaurants.append(t[0])
-            order_coords = fetch_coordinates(order.address)
-            restar =[]
-            for ar in product_restaurants:
+                    restaurants = {'restaurant': t[0],
+                                   'interval': distance.distance(fetch_coordinates(t[0].address), order_coords).km
+                                   }
+                    product_restaurants.append(restaurants)
 
-                rest_coords = fetch_coordinates(ar.address)
-                restaurants = {'restaurant': ar,
-                               'interval': distance.distance(rest_coords, order_coords).km
-                               }
-                restar.append(restaurants)
-
-            available_restaurant = {'order': order, 'restaurants': sorted(restar, key=lambda d: d['interval'])}
+            available_restaurant = {'order': order,
+                                    'restaurants': sorted(product_restaurants, key=lambda d: d['interval'])
+                                    }
             available_restaurants.append(available_restaurant)
 
     except requests.RequestException as e:
