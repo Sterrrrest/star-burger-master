@@ -65,19 +65,8 @@ def product_list_api(request):
 @transaction.atomic
 @api_view(['POST'])
 def register_order(request):
-    try:
-        request_data = request.data
-        serializer = OrderSerializer(data=request_data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-
-    except ValueError:
-        return Response({})
-
-    except requests.RequestException as e:
-        print('Ошибка запроса', e)
-
-    except requests.ConnectionError as e:
-        print('Ошибка подключения', e)
+    serializer = OrderSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
 
     return Response(serializer.data)
